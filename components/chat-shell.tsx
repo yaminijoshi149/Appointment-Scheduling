@@ -81,6 +81,7 @@ export default function ChatShell() {
   const [matchedDoctor, setMatchedDoctor] = useState<Doctor | null>(null);
   const [slotOptions, setSlotOptions] = useState<AppointmentSlot[]>([]);
   const [bookedSlot, setBookedSlot] = useState<AppointmentSlot | null>(null);
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -106,6 +107,7 @@ export default function ChatShell() {
     setMatchedDoctor(null);
     setSlotOptions([]);
     setBookedSlot(null);
+    setEmailStatus("idle");
   }
 
   function startSchedulingFlow() {
@@ -171,6 +173,45 @@ export default function ChatShell() {
     setStage("slotSelection");
   }
 
+  async function sendConfirmationEmail(slot: AppointmentSlot, doctor: Doctor) {
+    try {
+      setEmailStatus("sending");
+
+      const response = await fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          email: patient.email,
+          phone: patient.phone,
+          dob: patient.dob,
+          reason: patient.reason,
+          doctorName: doctor.name,
+          specialty: doctor.specialty,
+          office: doctor.office,
+          address: doctor.address,
+          slotLabel: formatSlotLabel(slot),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send confirmation email.");
+      }
+
+      setEmailStatus("sent");
+      addAssistantMessage(`Confirmation email sent to ${patient.email}.`);
+    } catch (error) {
+      console.error(error);
+      setEmailStatus("error");
+      addAssistantMessage(
+        "The appointment is booked, but the confirmation email could not be sent yet. Please check your Resend setup."
+      );
+    }
+  }
+
   function confirmBooking(slot: AppointmentSlot) {
     if (!matchedDoctor) return;
 
@@ -179,8 +220,14 @@ export default function ChatShell() {
     setStage("booked");
 
     addAssistantMessage(
-      `You’re all set, ${patient.firstName}. I booked ${formatSlotLabel(slot)} with ${matchedDoctor.name} at ${matchedDoctor.office}. A confirmation will be sent to ${patient.email}.`
+      `You’re all set, ${patient.firstName}. I booked ${formatSlotLabel(slot)} with ${matchedDoctor.name} at ${matchedDoctor.office}.`
     );
+
+    addAssistantMessage(
+      `I’m sending your confirmation email now to ${patient.email}.`
+    );
+
+    void sendConfirmationEmail(slot, matchedDoctor);
 
     addAssistantMessage(
       "For safety, I can help with scheduling and logistics, but I can’t diagnose conditions or provide medical advice. If symptoms are urgent, please contact emergency services or your physician directly."
@@ -374,7 +421,7 @@ export default function ChatShell() {
               Voice-enabled patient concierge
             </div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
-              Kyron Medical
+              K Medical
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-300 md:text-base">
               A patient-facing AI assistant for appointment scheduling, office information,
@@ -655,15 +702,18 @@ export default function ChatShell() {
                         ? `Confirmed for ${formatSlotLabel(bookedSlot)}`
                         : "No appointment booked yet"}
                     </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
+                  </div>                  
+                    <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
                     <div className="flex items-center gap-2 text-emerald-100">
                       <Mail className="h-4 w-4" />
-                      <span className="font-medium">Next feature</span>
+                      <span className="font-medium">Confirmation email</span>
                     </div>
                     <p className="mt-2 text-sm text-slate-200">
-                      We’ll wire real confirmation email delivery and then add voice call handoff.
+                      Status:{" "}
+                      {emailStatus === "idle" && "Not sent yet"}
+                      {emailStatus === "sending" && "Sending..."}
+                      {emailStatus === "sent" && "Sent successfully"}
+                      {emailStatus === "error" && "Failed to send"}
                     </p>
                   </div>
                 </div>
