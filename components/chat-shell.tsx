@@ -90,6 +90,8 @@ export default function ChatShell() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, slotOptions]);
 
+  
+
   const currentOfficeSummary = useMemo(() => {
     return doctors.map((doctor) => `${doctor.office} — ${doctor.address} (${doctor.hours})`);
   }, []);
@@ -662,7 +664,9 @@ export default function ChatShell() {
               </div>
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            {/* <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]"> */}
+            <section className="grid gap-6">
+            
               <div className="rounded-3xl border border-white/12 bg-white/10 p-6 shadow-2xl backdrop-blur-2xl">
                 <div className="mb-5 flex items-center gap-2">
                   <Stethoscope className="h-5 w-5 text-cyan-200" />
