@@ -82,6 +82,7 @@ export default function ChatShell() {
   const [slotOptions, setSlotOptions] = useState<AppointmentSlot[]>([]);
   const [bookedSlot, setBookedSlot] = useState<AppointmentSlot | null>(null);
   const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [callStatus, setCallStatus] = useState<"idle" | "starting" | "started" | "error">("idle");
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,6 +109,7 @@ export default function ChatShell() {
     setSlotOptions([]);
     setBookedSlot(null);
     setEmailStatus("idle");
+    setCallStatus("idle");
   }
 
   function startSchedulingFlow() {
@@ -117,6 +119,62 @@ export default function ChatShell() {
     setBookedSlot(null);
     setStage("firstName");
     addAssistantMessage("Let’s get your appointment scheduled. What’s your first name?");
+  }
+
+    async function startPhoneCall() {
+    if (!patient.phone) {
+      addAssistantMessage(
+        "I need a phone number before I can continue this conversation by phone."
+      );
+      return;
+    }
+
+    try {
+      setCallStatus("starting");
+
+      const response = await fetch("/api/start-phone-call", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          dob: patient.dob,
+          phone: patient.phone,
+          email: patient.email,
+          reason: patient.reason,
+          doctorName: matchedDoctor?.name || "",
+          specialty: matchedDoctor?.specialty || "",
+          slotLabel: bookedSlot ? formatSlotLabel(bookedSlot) : "",
+          office: matchedDoctor?.office || "",
+          address: matchedDoctor?.address || "",
+        }),
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          console.error("start-phone-call route error:", errorData);
+          throw new Error(
+            errorData?.vapiBody ||
+              errorData?.details ||
+              errorData?.error ||
+              "Failed to start phone call."
+          );
+      }
+
+      setCallStatus("started");
+      addAssistantMessage(
+        `I’m calling ${patient.phone} now to continue this conversation by voice.`
+      );
+    } catch (error) {
+      console.error("Phone call error:", error);
+
+      setCallStatus("error");
+      addAssistantMessage(
+        "I couldn’t start the phone call yet. Please check your Vapi setup and phone number format."
+      );
+    }
   }
 
   function handleQuickAction(action: string) {
@@ -141,10 +199,9 @@ export default function ChatShell() {
       return;
     }
 
-    if (action === "Continue on phone") {
-      addAssistantMessage(
-        "The phone handoff button is part of the next step. We’ll connect this same conversation context to a voice AI call flow right after the scheduling MVP is complete."
-      );
+     if (action === "Continue on phone") {
+      void startPhoneCall();
+      return;
     }
   }
 
@@ -579,7 +636,7 @@ export default function ChatShell() {
                   Ask for Tuesday morning
                 </button>
                 <button
-                  onClick={() => handleQuickAction("Continue on phone")}
+                  onClick={() => void startPhoneCall()}
                   className="rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm text-white transition hover:bg-white/14"
                 >
                   Continue on phone
@@ -703,7 +760,7 @@ export default function ChatShell() {
                         : "No appointment booked yet"}
                     </p>
                   </div>                  
-                    <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
+                                      <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
                     <div className="flex items-center gap-2 text-emerald-100">
                       <Mail className="h-4 w-4" />
                       <span className="font-medium">Confirmation email</span>
@@ -714,6 +771,20 @@ export default function ChatShell() {
                       {emailStatus === "sending" && "Sending..."}
                       {emailStatus === "sent" && "Sent successfully"}
                       {emailStatus === "error" && "Failed to send"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4">
+                    <div className="flex items-center gap-2 text-cyan-100">
+                      <PhoneCall className="h-4 w-4" />
+                      <span className="font-medium">Phone handoff</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-200">
+                      Status:{" "}
+                      {callStatus === "idle" && "Not started yet"}
+                      {callStatus === "starting" && "Calling patient..."}
+                      {callStatus === "started" && "Call started"}
+                      {callStatus === "error" && "Failed to start"}
                     </p>
                   </div>
                 </div>
