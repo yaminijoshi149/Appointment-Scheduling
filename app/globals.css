@@ -5,9 +5,9 @@
   --foreground: #f8fafc;
 }
 
-html {
+/* html {
   scroll-behavior: smooth;
-}
+} */
 
 body {
   background: var(--background);

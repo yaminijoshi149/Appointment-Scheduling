@@ -84,11 +84,21 @@ export default function ChatShell() {
   const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [callStatus, setCallStatus] = useState<"idle" | "starting" | "started" | "error">("idle");
 
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // useEffect(() => {
+  //   chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  // }, [messages, slotOptions]);
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, slotOptions]);
+  const el = chatContainerRef.current;
+  if (!el) return;
+
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;
+  });
+}, [messages, slotOptions]);
 
   
 
@@ -571,7 +581,11 @@ export default function ChatShell() {
                 </div>
               </div>
 
-              <div className="h-[420px] overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+              {/* <div className="h-[420px] overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/35 p-4"> */}
+              <div
+                  ref={chatContainerRef}
+                  className="h-[420px] overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/35 p-4"
+                >
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
@@ -611,7 +625,7 @@ export default function ChatShell() {
                     </div>
                   )}
 
-                  <div ref={chatEndRef} />
+                  {/* <div ref={chatEndRef} /> */}
                 </div>
               </div>
 
@@ -664,7 +678,6 @@ export default function ChatShell() {
               </div>
             </section>
 
-            {/* <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]"> */}
             <section className="grid gap-6">
             
               <div className="rounded-3xl border border-white/12 bg-white/10 p-6 shadow-2xl backdrop-blur-2xl">
